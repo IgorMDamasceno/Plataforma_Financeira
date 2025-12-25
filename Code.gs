@@ -5,6 +5,8 @@ const SHEET_NAMES = {
   TIPOS: "TIPOS",
 };
 
+const POSICOES_HEADERS = ["date", "bank", "investment_type", "asset", "investment_date", "maturity_date", "invested_value", "current_value"];
+
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("Dashboard Financeiro")
@@ -38,6 +40,8 @@ function setupSheets() {
       addHeaders(sheet, name);
     } else if (sheet.getLastRow() === 0) {
       addHeaders(sheet, name);
+    } else {
+      ensureHeaders(sheet, name);
     }
   });
 }
@@ -45,7 +49,7 @@ function setupSheets() {
 function addHeaders(sheet, name) {
   const headers = {
     [SHEET_NAMES.PATRIMONIO_HIST]: ["date", "total_value", "notes"],
-    [SHEET_NAMES.POSICOES]: ["date", "bank", "investment_type", "asset", "value"],
+    [SHEET_NAMES.POSICOES]: POSICOES_HEADERS,
     [SHEET_NAMES.BANCOS]: ["bank"],
     [SHEET_NAMES.TIPOS]: ["investment_type"],
   }[name];
@@ -55,10 +59,26 @@ function addHeaders(sheet, name) {
   }
 }
 
+function ensureHeaders(sheet, name) {
+  const headers = {
+    [SHEET_NAMES.PATRIMONIO_HIST]: ["date", "total_value", "notes"],
+    [SHEET_NAMES.POSICOES]: POSICOES_HEADERS,
+    [SHEET_NAMES.BANCOS]: ["bank"],
+    [SHEET_NAMES.TIPOS]: ["investment_type"],
+  }[name];
+  if (!headers) return;
+
+  const existing = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  const needsUpdate = headers.some((h, idx) => existing[idx] !== h);
+  if (needsUpdate) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+}
+
 function getDashboardData(period, positionDate) {
   setupSheets();
   const patrimonio = readTable(SHEET_NAMES.PATRIMONIO_HIST, ["date", "total_value", "notes"]);
-  const posicoes = readTable(SHEET_NAMES.POSICOES, ["date", "bank", "investment_type", "asset", "value"]);
+  const posicoes = readTable(SHEET_NAMES.POSICOES, POSICOES_HEADERS);
   const banks = readUniqueColumn(SHEET_NAMES.BANCOS, "bank");
   const types = readUniqueColumn(SHEET_NAMES.TIPOS, "investment_type");
 
@@ -80,6 +100,10 @@ function getDashboardData(period, positionDate) {
     },
     datasPosicoes: alocacao.datasDisponiveis,
     lookups: { banks, types },
+    totalInvestidoPosicoes: alocacao.totalInvested,
+    totalAtualPosicoes: alocacao.totalCurrent,
+    rentabilidadeTotalValor: alocacao.totalCurrent - alocacao.totalInvested,
+    rentabilidadeTotalPercent: alocacao.totalInvested ? ((alocacao.totalCurrent - alocacao.totalInvested) / alocacao.totalInvested) * 100 : null,
   };
 }
 
@@ -104,11 +128,21 @@ function addPosicoesEntries(payload) {
     if (!item.date || !item.bank || !item.investment_type) {
       throw new Error("Data, banco e tipo são obrigatórios.");
     }
-    const value = Number(item.value);
-    if (isNaN(value)) throw new Error("Valor inválido.");
-    return [item.date, item.bank, item.investment_type, item.asset || "", value];
+    const invested = Number(item.invested_value);
+    const current = Number(item.current_value);
+    if (isNaN(invested) || isNaN(current)) throw new Error("Valores inválidos.");
+    return [
+      item.date,
+      item.bank,
+      item.investment_type,
+      item.asset || "",
+      item.investment_date || "",
+      item.maturity_date || "",
+      invested,
+      current,
+    ];
   });
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows);
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, POSICOES_HEADERS.length).setValues(rows);
 
   if (Array.isArray(newBanks) && newBanks.length) {
     const bankSheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.BANCOS);
@@ -272,6 +306,8 @@ function buildAlocacao(posicoes, positionDate) {
       resumoBancos: [],
       resumoTipos: [],
       datasDisponiveis: [],
+      totalCurrent: 0,
+      totalInvested: 0,
     };
   }
 
@@ -281,18 +317,22 @@ function buildAlocacao(posicoes, positionDate) {
       bank: item.bank,
       investment_type: item.investment_type,
       asset: item.asset,
-      value: Number(item.value),
+      investment_date: item.investment_date ? new Date(item.investment_date) : null,
+      maturity_date: item.maturity_date ? new Date(item.maturity_date) : null,
+      invested_value: Number(item.invested_value),
+      current_value: Number(item.current_value),
     }))
-    .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.value))
+    .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.invested_value) && !isNaN(item.current_value))
     .sort((a, b) => a.date - b.date);
 
   const datasDisponiveis = Array.from(new Set(parsed.map((p) => formatDateLabel(p.date)))).sort();
   const targetDate = resolvePositionDate(parsed, positionDate);
   const filtered = parsed.filter((item) => formatDateLabel(item.date) === targetDate);
-  const total = filtered.reduce((sum, item) => sum + item.value, 0);
+  const totalCurrent = filtered.reduce((sum, item) => sum + item.current_value, 0);
+  const totalInvested = filtered.reduce((sum, item) => sum + item.invested_value, 0);
 
-  const porBanco = aggregateByKey(filtered, "bank", total);
-  const porTipo = aggregateByKey(filtered, "investment_type", total);
+  const porBanco = aggregateByKey(filtered, "bank", totalCurrent);
+  const porTipo = aggregateByKey(filtered, "investment_type", totalCurrent);
 
   return {
     porBanco,
@@ -300,6 +340,8 @@ function buildAlocacao(posicoes, positionDate) {
     resumoBancos: porBanco,
     resumoTipos: porTipo,
     datasDisponiveis,
+    totalCurrent,
+    totalInvested,
   };
 }
 
@@ -312,14 +354,23 @@ function resolvePositionDate(records, positionDate) {
 function aggregateByKey(list, key, total) {
   const map = new Map();
   list.forEach((item) => {
-    const current = map.get(item[key]) || 0;
-    map.set(item[key], current + item.value);
+    const current = map.get(item[key]) || { invested: 0, current: 0 };
+    current.invested += item.invested_value;
+    current.current += item.current_value;
+    map.set(item[key], current);
   });
   return Array.from(map.entries())
-    .map(([label, value]) => ({
-      label,
-      value,
-      percent: total ? (value / total) * 100 : 0,
-    }))
+    .map(([label, sums]) => {
+      const profit = sums.current - sums.invested;
+      return {
+        label,
+        invested: sums.invested,
+        current: sums.current,
+        value: sums.current,
+        percent: total ? (sums.current / total) * 100 : 0,
+        profit,
+        profitPercent: sums.invested ? (profit / sums.invested) * 100 : null,
+      };
+    })
     .sort((a, b) => b.value - a.value);
 }

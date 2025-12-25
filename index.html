@@ -7,86 +7,109 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>Dashboard Financeiro</title>
   </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body class="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-slate-100">
     <div class="min-h-screen">
-      <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header class="bg-slate-900/70 backdrop-blur border-b border-white/5 px-6 py-5 flex items-center justify-between sticky top-0 z-10">
         <div>
-          <h1 class="text-2xl font-semibold text-slate-800">Dashboard Financeiro</h1>
-          <p class="text-sm text-slate-500">Controle de patrimônio com visão mensal e alocação.</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Plataforma Financeira</p>
+          <h1 class="text-3xl font-bold text-white mt-1">Dashboard Financeiro</h1>
+          <p class="text-sm text-slate-400">Controle de patrimônio, alocação e rentabilidade.</p>
         </div>
-        <div class="flex gap-2">
-          <button id="addPatrimonioBtn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700 transition">Adicionar patrimônio</button>
-          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition">Adicionar posições</button>
+        <div class="flex gap-3">
+          <button id="addPatrimonioBtn" class="px-4 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition">Adicionar patrimônio</button>
+          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition">Adicionar posições</button>
         </div>
       </header>
 
       <main class="p-6 space-y-6">
         <section class="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
           <div class="flex gap-3">
-            <select id="periodoSelect" class="px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm">
+            <select id="periodoSelect" class="px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-slate-100 shadow">
               <option value="3m">Últimos 3 meses</option>
               <option value="6m">Últimos 6 meses</option>
               <option value="12m" selected>Últimos 12 meses</option>
               <option value="all">Tudo</option>
             </select>
-            <select id="dataPosicaoSelect" class="px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm">
+            <select id="dataPosicaoSelect" class="px-4 py-2 rounded-xl bg-slate-800 border border-white/10 text-slate-100 shadow">
               <option value="">Posição mais recente</option>
             </select>
           </div>
-          <div class="text-sm text-slate-500">Use os filtros para ver períodos e datas específicas das posições.</div>
+          <div class="text-sm text-slate-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Use os filtros para ver períodos e datas específicas das posições.
+          </div>
         </section>
 
         <section id="cardsSection" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"></section>
 
         <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div class="bg-white rounded-2xl shadow-sm p-4">
-            <h2 class="text-lg font-semibold mb-3">Patrimônio ao longo do tempo</h2>
+          <div class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-white">Patrimônio ao longo do tempo</h2>
+              <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Linha</span>
+            </div>
             <canvas id="linhaPatrimonio"></canvas>
           </div>
-          <div class="bg-white rounded-2xl shadow-sm p-4">
-            <h2 class="text-lg font-semibold mb-3">Crescimento mensal (%)</h2>
+          <div class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-white">Crescimento mensal (%)</h2>
+              <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Barras</span>
+            </div>
             <canvas id="barraCrescimento"></canvas>
           </div>
         </section>
 
         <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-white rounded-2xl shadow-sm p-4">
-            <h2 class="text-lg font-semibold mb-3">Alocação por tipo</h2>
+          <div class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-white">Alocação por tipo</h2>
+              <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Donut</span>
+            </div>
             <canvas id="pizzaTipo"></canvas>
           </div>
-          <div class="bg-white rounded-2xl shadow-sm p-4">
-            <h2 class="text-lg font-semibold mb-3">Alocação por banco</h2>
+          <div class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-white">Alocação por banco</h2>
+              <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Donut</span>
+            </div>
             <canvas id="pizzaBanco"></canvas>
           </div>
         </section>
 
-        <section class="bg-white rounded-2xl shadow-sm p-4">
+        <section class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">Resumo de alocação</h2>
-            <div class="text-sm text-slate-500">Valores baseados na data selecionada.</div>
+            <div>
+              <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Resumo</p>
+              <h2 class="text-lg font-semibold text-white">Alocação e rentabilidade</h2>
+            </div>
+            <div class="text-sm text-slate-400">Valores baseados na data selecionada.</div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 class="font-semibold text-slate-700 mb-2">Por Banco</h3>
+              <h3 class="font-semibold text-white mb-2">Por Banco</h3>
               <table class="min-w-full text-sm">
                 <thead>
-                  <tr class="text-left text-slate-500 border-b">
+                  <tr class="text-left text-slate-400 border-b border-white/10">
                     <th class="py-2">Banco</th>
-                    <th class="py-2">Valor</th>
-                    <th class="py-2">% do total</th>
+                    <th class="py-2">Atual</th>
+                    <th class="py-2">Rent. (R$)</th>
+                    <th class="py-2">Rent. (%)</th>
+                    <th class="py-2">% da aloc.</th>
                   </tr>
                 </thead>
                 <tbody id="tabelaBancos"></tbody>
               </table>
             </div>
             <div>
-              <h3 class="font-semibold text-slate-700 mb-2">Por Tipo</h3>
+              <h3 class="font-semibold text-white mb-2">Por Tipo</h3>
               <table class="min-w-full text-sm">
                 <thead>
-                  <tr class="text-left text-slate-500 border-b">
+                  <tr class="text-left text-slate-400 border-b border-white/10">
                     <th class="py-2">Tipo</th>
-                    <th class="py-2">Valor</th>
-                    <th class="py-2">% do total</th>
+                    <th class="py-2">Atual</th>
+                    <th class="py-2">Rent. (R$)</th>
+                    <th class="py-2">Rent. (%)</th>
+                    <th class="py-2">% da aloc.</th>
                   </tr>
                 </thead>
                 <tbody id="tabelaTipos"></tbody>
@@ -97,9 +120,9 @@
       </main>
     </div>
 
-    <div id="loader" class="fixed inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center hidden z-20">
-      <div class="flex items-center gap-3 text-slate-700">
-        <svg class="w-6 h-6 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none">
+    <div id="loader" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center hidden z-20">
+      <div class="flex items-center gap-3 text-slate-200">
+        <svg class="w-6 h-6 animate-spin text-indigo-400" viewBox="0 0 24 24" fill="none">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
         </svg>
@@ -107,74 +130,89 @@
       </div>
     </div>
 
-    <div id="patrimonioModal" class="fixed inset-0 bg-slate-900/40 flex items-center justify-center hidden z-30">
-      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+    <div id="patrimonioModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
+      <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-semibold">Adicionar patrimônio</h3>
-          <button onclick="toggleModal('patrimonioModal', false)" class="text-slate-400 hover:text-slate-600">✕</button>
+          <h3 class="text-xl font-semibold text-white">Adicionar patrimônio</h3>
+          <button onclick="toggleModal('patrimonioModal', false)" class="text-slate-400 hover:text-slate-200">✕</button>
         </div>
         <form id="patrimonioForm" class="space-y-3">
           <label class="block">
-            <span class="text-sm text-slate-700">Data</span>
-            <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+            <span class="text-sm text-slate-300">Data</span>
+            <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
           </label>
           <label class="block">
-            <span class="text-sm text-slate-700">Valor total</span>
-            <input name="total_value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+            <span class="text-sm text-slate-300">Valor total</span>
+            <input name="total_value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
           </label>
           <label class="block">
-            <span class="text-sm text-slate-700">Observação (opcional)</span>
-            <textarea name="notes" class="mt-1 w-full px-3 py-2 border rounded-lg"></textarea>
+            <span class="text-sm text-slate-300">Observação (opcional)</span>
+            <textarea name="notes" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white"></textarea>
           </label>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="button" onclick="toggleModal('patrimonioModal', false)" class="px-4 py-2 bg-slate-100 rounded-lg">Cancelar</button>
-            <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700">Salvar</button>
+            <button type="button" onclick="toggleModal('patrimonioModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
+            <button type="submit" class="px-4 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-emerald-500/30 hover:bg-emerald-400">Salvar</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div id="posicaoModal" class="fixed inset-0 bg-slate-900/40 flex items-center justify-center hidden z-30">
-      <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6">
+    <div id="posicaoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
+      <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-3xl w-full p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-semibold">Adicionar posições</h3>
-          <button onclick="toggleModal('posicaoModal', false)" class="text-slate-400 hover:text-slate-600">✕</button>
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Posições</p>
+            <h3 class="text-xl font-semibold text-white">Adicionar posições</h3>
+          </div>
+          <button onclick="toggleModal('posicaoModal', false)" class="text-slate-400 hover:text-slate-200">✕</button>
         </div>
         <form id="posicaoForm" class="space-y-3">
           <div class="flex flex-wrap gap-3 items-end">
             <label class="block">
-              <span class="text-sm text-slate-700">Data</span>
-              <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+              <span class="text-sm text-slate-300">Data da posição</span>
+              <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
             </label>
             <label class="block">
-              <span class="text-sm text-slate-700">Banco</span>
-              <input list="bankOptions" name="bank" required class="mt-1 w-full px-3 py-2 border rounded-lg" placeholder="Selecione ou digite" />
+              <span class="text-sm text-slate-300">Banco</span>
+              <input list="bankOptions" name="bank" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" placeholder="Selecione ou digite" />
               <datalist id="bankOptions"></datalist>
             </label>
             <label class="block">
-              <span class="text-sm text-slate-700">Tipo</span>
-              <input list="typeOptions" name="investment_type" required class="mt-1 w-full px-3 py-2 border rounded-lg" placeholder="Selecione ou digite" />
+              <span class="text-sm text-slate-300">Tipo</span>
+              <input list="typeOptions" name="investment_type" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" placeholder="Selecione ou digite" />
               <datalist id="typeOptions"></datalist>
             </label>
             <label class="block">
-              <span class="text-sm text-slate-700">Ativo (opcional)</span>
-              <input name="asset" class="mt-1 w-full px-3 py-2 border rounded-lg" />
+              <span class="text-sm text-slate-300">Ativo (opcional)</span>
+              <input name="asset" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
             </label>
             <label class="block">
-              <span class="text-sm text-slate-700">Valor</span>
-              <input name="value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+              <span class="text-sm text-slate-300">Valor investido</span>
+              <input name="invested_value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-300">Valor atualizado</span>
+              <input name="current_value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-300">Data de investimento</span>
+              <input name="investment_date" type="date" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-300">Data de vencimento (opcional)</span>
+              <input name="maturity_date" type="date" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
             </label>
           </div>
           <div class="flex justify-end">
-            <button type="button" onclick="addPosicaoLinha()" class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100 hover:bg-indigo-100">+ Adicionar linha</button>
+            <button type="button" onclick="addPosicaoLinha()" class="px-4 py-2 bg-indigo-500/10 text-indigo-200 rounded-lg border border-indigo-500/40 hover:bg-indigo-500/20">+ Adicionar linha</button>
           </div>
-          <div class="bg-slate-50 rounded-xl p-3">
-            <div class="text-sm font-semibold text-slate-700 mb-2">Linhas adicionadas</div>
+          <div class="bg-slate-800/80 rounded-xl p-3 border border-white/5">
+            <div class="text-sm font-semibold text-white mb-2">Linhas adicionadas</div>
             <div id="posicoesPreview" class="space-y-2 max-h-56 overflow-y-auto"></div>
           </div>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="button" onclick="toggleModal('posicaoModal', false)" class="px-4 py-2 bg-slate-100 rounded-lg">Cancelar</button>
-            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700">Salvar posições</button>
+            <button type="button" onclick="toggleModal('posicaoModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
+            <button type="submit" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-indigo-500/30 hover:bg-indigo-400">Salvar posições</button>
           </div>
         </form>
       </div>
@@ -240,6 +278,8 @@
       function renderCards(data) {
         const items = [
           { label: "Patrimônio atual", value: formatCurrency(data.patrimonioAtual) },
+          { label: "Rentabilidade posições (R$)", value: formatCurrency(data.rentabilidadeTotalValor) },
+          { label: "Rentabilidade posições (%)", value: formatPercent(data.rentabilidadeTotalPercent) },
           { label: "Crescimento no mês (%)", value: formatPercent(data.crescimentoMensalPercent) },
           { label: "Crescimento no mês (R$)", value: formatCurrency(data.crescimentoMensalValor) },
           { label: "Crescimento 12 meses (%)", value: formatPercent(data.crescimento12MesesPercent) },
@@ -248,9 +288,9 @@
         container.innerHTML = items
           .map(
             (item) => `
-          <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100">
-            <p class="text-sm text-slate-500">${item.label}</p>
-            <p class="text-2xl font-semibold text-slate-800 mt-1">${item.value}</p>
+          <div class="bg-slate-900/70 border border-white/5 rounded-2xl shadow-lg shadow-black/40 p-4 hover:border-indigo-500/40 transition">
+            <p class="text-sm text-slate-400">${item.label}</p>
+            <p class="text-2xl font-semibold text-white mt-1">${item.value}</p>
           </div>
         `
           )
@@ -282,7 +322,14 @@
               },
             ],
           },
-          options: { responsive: true, plugins: { legend: { display: false } } },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148,163,184,0.2)" } },
+              y: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148,163,184,0.2)" } },
+            },
+          },
         });
       }
 
@@ -301,7 +348,14 @@
               },
             ],
           },
-          options: { responsive: true, plugins: { legend: { display: false } } },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148,163,184,0.15)" } },
+              y: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148,163,184,0.15)" } },
+            },
+          },
         });
       }
 
@@ -320,7 +374,15 @@
               },
             ],
           },
-          options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { color: "#e2e8f0" },
+              },
+            },
+          },
         });
       }
 
@@ -329,9 +391,11 @@
           items
             .map(
               (i) => `
-          <tr class="border-b last:border-0">
+          <tr class="border-b border-white/5 last:border-0 text-slate-100">
             <td class="py-2">${i.label || "—"}</td>
-            <td class="py-2">${formatCurrency(i.value)}</td>
+            <td class="py-2">${formatCurrency(i.current)}</td>
+            <td class="py-2">${formatCurrency(i.profit)}</td>
+            <td class="py-2">${formatPercent(i.profitPercent)}</td>
             <td class="py-2">${formatPercent(i.percent)}</td>
           </tr>`
             )
@@ -366,14 +430,16 @@
       function addPosicaoLinha() {
         const form = document.getElementById("posicaoForm");
         const data = Object.fromEntries(new FormData(form).entries());
-        if (!data.date || !data.bank || !data.investment_type || !data.value) {
-          alert("Preencha data, banco, tipo e valor.");
+        if (!data.date || !data.bank || !data.investment_type || !data.invested_value || !data.current_value || !data.investment_date) {
+          alert("Preencha data, banco, tipo, valores e data de investimento.");
           return;
         }
         state.posicoesBuffer.push({ ...data });
         renderPosicoesPreview();
-        form.value.value = "";
+        form.invested_value.value = "";
+        form.current_value.value = "";
         form.asset.value = "";
+        form.maturity_date.value = "";
       }
 
       function renderPosicoesPreview() {
@@ -385,14 +451,20 @@
         container.innerHTML = state.posicoesBuffer
           .map(
             (item, idx) => `
-          <div class="bg-white border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+          <div class="bg-slate-900/70 border border-white/10 rounded-lg p-3 flex items-center justify-between shadow-sm">
             <div>
-              <p class="text-sm font-semibold">${item.bank} • ${item.investment_type}</p>
-              <p class="text-xs text-slate-500">${item.date} ${item.asset ? "• " + item.asset : ""}</p>
+              <p class="text-sm font-semibold text-white">${item.bank} • ${item.investment_type}</p>
+              <p class="text-xs text-slate-400">${item.date} ${item.asset ? "• " + item.asset : ""}</p>
+              <p class="text-xs text-slate-500">Investido em ${item.investment_date}${item.maturity_date ? " • Venc.: " + item.maturity_date : ""}</p>
             </div>
             <div class="flex items-center gap-3">
-              <span class="font-semibold">${formatCurrency(item.value)}</span>
-              <button class="text-red-500 text-sm" onclick="removePosicao(${idx})">Remover</button>
+              <div class="text-right">
+                <p class="text-xs text-slate-400">Investido</p>
+                <p class="font-semibold text-amber-300">${formatCurrency(item.invested_value)}</p>
+                <p class="text-xs text-slate-400">Atual</p>
+                <p class="font-semibold text-emerald-300">${formatCurrency(item.current_value)}</p>
+              </div>
+              <button class="text-red-400 text-sm hover:text-red-200" onclick="removePosicao(${idx})">Remover</button>
             </div>
           </div>`
           )
