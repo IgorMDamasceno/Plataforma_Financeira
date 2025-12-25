@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Dashboard Financeiro</title>
+  </head>
+  <body class="bg-slate-50 text-slate-900">
+    <div class="min-h-screen">
+      <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div>
+          <h1 class="text-2xl font-semibold text-slate-800">Dashboard Financeiro</h1>
+          <p class="text-sm text-slate-500">Controle de patrimônio com visão mensal e alocação.</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="addPatrimonioBtn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700 transition">Adicionar patrimônio</button>
+          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition">Adicionar posições</button>
+        </div>
+      </header>
+
+      <main class="p-6 space-y-6">
+        <section class="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
+          <div class="flex gap-3">
+            <select id="periodoSelect" class="px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm">
+              <option value="3m">Últimos 3 meses</option>
+              <option value="6m">Últimos 6 meses</option>
+              <option value="12m" selected>Últimos 12 meses</option>
+              <option value="all">Tudo</option>
+            </select>
+            <select id="dataPosicaoSelect" class="px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm">
+              <option value="">Posição mais recente</option>
+            </select>
+          </div>
+          <div class="text-sm text-slate-500">Use os filtros para ver períodos e datas específicas das posições.</div>
+        </section>
+
+        <section id="cardsSection" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"></section>
+
+        <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h2 class="text-lg font-semibold mb-3">Patrimônio ao longo do tempo</h2>
+            <canvas id="linhaPatrimonio"></canvas>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h2 class="text-lg font-semibold mb-3">Crescimento mensal (%)</h2>
+            <canvas id="barraCrescimento"></canvas>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h2 class="text-lg font-semibold mb-3">Alocação por tipo</h2>
+            <canvas id="pizzaTipo"></canvas>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h2 class="text-lg font-semibold mb-3">Alocação por banco</h2>
+            <canvas id="pizzaBanco"></canvas>
+          </div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Resumo de alocação</h2>
+            <div class="text-sm text-slate-500">Valores baseados na data selecionada.</div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 class="font-semibold text-slate-700 mb-2">Por Banco</h3>
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="text-left text-slate-500 border-b">
+                    <th class="py-2">Banco</th>
+                    <th class="py-2">Valor</th>
+                    <th class="py-2">% do total</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaBancos"></tbody>
+              </table>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-700 mb-2">Por Tipo</h3>
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="text-left text-slate-500 border-b">
+                    <th class="py-2">Tipo</th>
+                    <th class="py-2">Valor</th>
+                    <th class="py-2">% do total</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaTipos"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="loader" class="fixed inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center hidden z-20">
+      <div class="flex items-center gap-3 text-slate-700">
+        <svg class="w-6 h-6 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Carregando...</span>
+      </div>
+    </div>
+
+    <div id="patrimonioModal" class="fixed inset-0 bg-slate-900/40 flex items-center justify-center hidden z-30">
+      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">Adicionar patrimônio</h3>
+          <button onclick="toggleModal('patrimonioModal', false)" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <form id="patrimonioForm" class="space-y-3">
+          <label class="block">
+            <span class="text-sm text-slate-700">Data</span>
+            <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-700">Valor total</span>
+            <input name="total_value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-700">Observação (opcional)</span>
+            <textarea name="notes" class="mt-1 w-full px-3 py-2 border rounded-lg"></textarea>
+          </label>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="toggleModal('patrimonioModal', false)" class="px-4 py-2 bg-slate-100 rounded-lg">Cancelar</button>
+            <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="posicaoModal" class="fixed inset-0 bg-slate-900/40 flex items-center justify-center hidden z-30">
+      <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">Adicionar posições</h3>
+          <button onclick="toggleModal('posicaoModal', false)" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <form id="posicaoForm" class="space-y-3">
+          <div class="flex flex-wrap gap-3 items-end">
+            <label class="block">
+              <span class="text-sm text-slate-700">Data</span>
+              <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-700">Banco</span>
+              <input list="bankOptions" name="bank" required class="mt-1 w-full px-3 py-2 border rounded-lg" placeholder="Selecione ou digite" />
+              <datalist id="bankOptions"></datalist>
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-700">Tipo</span>
+              <input list="typeOptions" name="investment_type" required class="mt-1 w-full px-3 py-2 border rounded-lg" placeholder="Selecione ou digite" />
+              <datalist id="typeOptions"></datalist>
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-700">Ativo (opcional)</span>
+              <input name="asset" class="mt-1 w-full px-3 py-2 border rounded-lg" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-700">Valor</span>
+              <input name="value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border rounded-lg" />
+            </label>
+          </div>
+          <div class="flex justify-end">
+            <button type="button" onclick="addPosicaoLinha()" class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100 hover:bg-indigo-100">+ Adicionar linha</button>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3">
+            <div class="text-sm font-semibold text-slate-700 mb-2">Linhas adicionadas</div>
+            <div id="posicoesPreview" class="space-y-2 max-h-56 overflow-y-auto"></div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="toggleModal('posicaoModal', false)" class="px-4 py-2 bg-slate-100 rounded-lg">Cancelar</button>
+            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700">Salvar posições</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const state = {
+        charts: {},
+        posicoesBuffer: [],
+        lookups: { banks: [], types: [] },
+      };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const today = new Date().toISOString().split("T")[0];
+        document.querySelectorAll('input[type="date"]').forEach((input) => (input.value = today));
+        fetchDashboard();
+
+        document.getElementById("addPatrimonioBtn").onclick = () => toggleModal("patrimonioModal", true);
+        document.getElementById("addPosicaoBtn").onclick = () => toggleModal("posicaoModal", true);
+        document.getElementById("periodoSelect").onchange = () => fetchDashboard();
+        document.getElementById("dataPosicaoSelect").onchange = () => fetchDashboard();
+
+        document.getElementById("patrimonioForm").addEventListener("submit", handlePatrimonioSubmit);
+        document.getElementById("posicaoForm").addEventListener("submit", handlePosicaoSubmit);
+      });
+
+      function toggleModal(id, show) {
+        document.getElementById(id).classList.toggle("hidden", !show);
+        if (!show && id === "posicaoModal") {
+          state.posicoesBuffer = [];
+          renderPosicoesPreview();
+        }
+      }
+
+      function showLoader(show) {
+        document.getElementById("loader").classList.toggle("hidden", !show);
+      }
+
+      function fetchDashboard() {
+        showLoader(true);
+        const periodo = document.getElementById("periodoSelect").value;
+        const dataPosicao = document.getElementById("dataPosicaoSelect").value || null;
+        google.script.run
+          .withSuccessHandler((data) => {
+            showLoader(false);
+            if (!data) return;
+            state.lookups = data.lookups;
+            updateLookups();
+            renderCards(data);
+            renderCharts(data);
+            renderTabelas(data);
+            renderDatasPosicoes(data.datasPosicoes, dataPosicao);
+          })
+          .withFailureHandler(handleError)
+          .getDashboardData(periodo, dataPosicao);
+      }
+
+      function handleError(err) {
+        showLoader(false);
+        alert(err?.message || "Algo deu errado.");
+      }
+
+      function renderCards(data) {
+        const items = [
+          { label: "Patrimônio atual", value: formatCurrency(data.patrimonioAtual) },
+          { label: "Crescimento no mês (%)", value: formatPercent(data.crescimentoMensalPercent) },
+          { label: "Crescimento no mês (R$)", value: formatCurrency(data.crescimentoMensalValor) },
+          { label: "Crescimento 12 meses (%)", value: formatPercent(data.crescimento12MesesPercent) },
+        ];
+        const container = document.getElementById("cardsSection");
+        container.innerHTML = items
+          .map(
+            (item) => `
+          <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100">
+            <p class="text-sm text-slate-500">${item.label}</p>
+            <p class="text-2xl font-semibold text-slate-800 mt-1">${item.value}</p>
+          </div>
+        `
+          )
+          .join("");
+      }
+
+      function renderCharts(data) {
+        renderLineChart("linhaPatrimonio", data.seriesPatrimonio);
+        renderBarChart("barraCrescimento", data.crescimentoMensalSeries);
+        renderPieChart("pizzaTipo", data.alocacaoPorTipo, "Tipos");
+        renderPieChart("pizzaBanco", data.alocacaoPorBanco, "Bancos");
+      }
+
+      function renderLineChart(id, series) {
+        const ctx = document.getElementById(id).getContext("2d");
+        if (state.charts[id]) state.charts[id].destroy();
+        state.charts[id] = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: series.map((i) => i.label),
+            datasets: [
+              {
+                label: "Patrimônio",
+                data: series.map((i) => i.value),
+                borderColor: "#2563eb",
+                backgroundColor: "rgba(37,99,235,0.1)",
+                tension: 0.25,
+                fill: true,
+              },
+            ],
+          },
+          options: { responsive: true, plugins: { legend: { display: false } } },
+        });
+      }
+
+      function renderBarChart(id, series) {
+        const ctx = document.getElementById(id).getContext("2d");
+        if (state.charts[id]) state.charts[id].destroy();
+        state.charts[id] = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: series.map((i) => i.label),
+            datasets: [
+              {
+                label: "% no mês",
+                data: series.map((i) => i.value ?? 0),
+                backgroundColor: "#10b981",
+              },
+            ],
+          },
+          options: { responsive: true, plugins: { legend: { display: false } } },
+        });
+      }
+
+      function renderPieChart(id, series, label) {
+        const ctx = document.getElementById(id).getContext("2d");
+        if (state.charts[id]) state.charts[id].destroy();
+        state.charts[id] = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: series.map((i) => i.label),
+            datasets: [
+              {
+                label,
+                data: series.map((i) => i.value),
+                backgroundColor: series.map((_, idx) => tailwindColor(idx)),
+              },
+            ],
+          },
+          options: { responsive: true, plugins: { legend: { position: "bottom" } } },
+        });
+      }
+
+      function renderTabelas(data) {
+        const makeRows = (items) =>
+          items
+            .map(
+              (i) => `
+          <tr class="border-b last:border-0">
+            <td class="py-2">${i.label || "—"}</td>
+            <td class="py-2">${formatCurrency(i.value)}</td>
+            <td class="py-2">${formatPercent(i.percent)}</td>
+          </tr>`
+            )
+            .join("");
+        document.getElementById("tabelaBancos").innerHTML = makeRows(data.resumo.bancos);
+        document.getElementById("tabelaTipos").innerHTML = makeRows(data.resumo.tipos);
+      }
+
+      function renderDatasPosicoes(dates, selected) {
+        const select = document.getElementById("dataPosicaoSelect");
+        const current = select.value;
+        select.innerHTML = `<option value="">Posição mais recente</option>${dates
+          .map((d) => `<option value="${d}" ${d === (selected || current) ? "selected" : ""}>${d}</option>`)
+          .join("")}`;
+      }
+
+      function handlePatrimonioSubmit(e) {
+        e.preventDefault();
+        const formData = Object.fromEntries(new FormData(e.target).entries());
+        showLoader(true);
+        google.script.run
+          .withSuccessHandler(() => {
+            showLoader(false);
+            toggleModal("patrimonioModal", false);
+            e.target.reset();
+            fetchDashboard();
+          })
+          .withFailureHandler(handleError)
+          .addPatrimonioEntry(formData);
+      }
+
+      function addPosicaoLinha() {
+        const form = document.getElementById("posicaoForm");
+        const data = Object.fromEntries(new FormData(form).entries());
+        if (!data.date || !data.bank || !data.investment_type || !data.value) {
+          alert("Preencha data, banco, tipo e valor.");
+          return;
+        }
+        state.posicoesBuffer.push({ ...data });
+        renderPosicoesPreview();
+        form.value.value = "";
+        form.asset.value = "";
+      }
+
+      function renderPosicoesPreview() {
+        const container = document.getElementById("posicoesPreview");
+        if (!state.posicoesBuffer.length) {
+          container.innerHTML = '<p class="text-sm text-slate-500">Nenhuma linha adicionada.</p>';
+          return;
+        }
+        container.innerHTML = state.posicoesBuffer
+          .map(
+            (item, idx) => `
+          <div class="bg-white border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold">${item.bank} • ${item.investment_type}</p>
+              <p class="text-xs text-slate-500">${item.date} ${item.asset ? "• " + item.asset : ""}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="font-semibold">${formatCurrency(item.value)}</span>
+              <button class="text-red-500 text-sm" onclick="removePosicao(${idx})">Remover</button>
+            </div>
+          </div>`
+          )
+          .join("");
+      }
+
+      function removePosicao(index) {
+        state.posicoesBuffer.splice(index, 1);
+        renderPosicoesPreview();
+      }
+
+      function handlePosicaoSubmit(e) {
+        e.preventDefault();
+        if (!state.posicoesBuffer.length) {
+          alert("Adicione ao menos uma posição.");
+          return;
+        }
+        const newBanks = extractNewItems(state.lookups.banks, state.posicoesBuffer.map((p) => p.bank));
+        const newTypes = extractNewItems(state.lookups.types, state.posicoesBuffer.map((p) => p.investment_type));
+        showLoader(true);
+        google.script.run
+          .withSuccessHandler(() => {
+            showLoader(false);
+            state.posicoesBuffer = [];
+            renderPosicoesPreview();
+            toggleModal("posicaoModal", false);
+            fetchDashboard();
+          })
+          .withFailureHandler(handleError)
+          .addPosicoesEntries({ entries: state.posicoesBuffer, newBanks, newTypes });
+      }
+
+      function updateLookups() {
+        const bankList = document.getElementById("bankOptions");
+        const typeList = document.getElementById("typeOptions");
+        bankList.innerHTML = state.lookups.banks.map((b) => `<option value="${b}"></option>`).join("");
+        typeList.innerHTML = state.lookups.types.map((t) => `<option value="${t}"></option>`).join("");
+      }
+
+      function extractNewItems(existing, incoming) {
+        const set = new Set(existing);
+        return Array.from(new Set(incoming.filter((i) => i && !set.has(i))));
+      }
+
+      function formatCurrency(value) {
+        if (value === null || value === undefined || isNaN(Number(value))) return "—";
+        return Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      }
+
+      function formatPercent(value) {
+        if (value === null || value === undefined || isNaN(Number(value))) return "—";
+        return `${Number(value).toFixed(2)}%`;
+      }
+
+      function tailwindColor(index) {
+        const palette = ["#0ea5e9", "#10b981", "#6366f1", "#f59e0b", "#ef4444", "#14b8a6", "#8b5cf6", "#ec4899"];
+        return palette[index % palette.length];
+      }
+    </script>
+  </body>
+</html>
