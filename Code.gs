@@ -86,7 +86,7 @@ function getDashboardData(period, positionDate) {
   const alocacao = buildAlocacao(posicoes, positionDate);
 
   return {
-    patrimonioAtual: patrimonioData.patrimonioAtual,
+    patrimonioAtual: alocacao.totalCurrent,
     crescimentoMensalPercent: patrimonioData.crescimentoMensalPercent,
     crescimentoMensalValor: patrimonioData.crescimentoMensalValor,
     crescimento12MesesPercent: patrimonioData.crescimento12MesesPercent,

@@ -16,8 +16,7 @@
           <p class="text-sm text-slate-400">Controle de patrimônio, alocação e rentabilidade.</p>
         </div>
         <div class="flex gap-3">
-          <button id="addPatrimonioBtn" class="px-4 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition">Adicionar patrimônio</button>
-          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition">Adicionar posições</button>
+          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition">Adicionar Ativo</button>
         </div>
       </header>
 
@@ -130,39 +129,12 @@
       </div>
     </div>
 
-    <div id="patrimonioModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
-      <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-semibold text-white">Adicionar patrimônio</h3>
-          <button onclick="toggleModal('patrimonioModal', false)" class="text-slate-400 hover:text-slate-200">✕</button>
-        </div>
-        <form id="patrimonioForm" class="space-y-3">
-          <label class="block">
-            <span class="text-sm text-slate-300">Data</span>
-            <input name="date" type="date" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
-          </label>
-          <label class="block">
-            <span class="text-sm text-slate-300">Valor total</span>
-            <input name="total_value" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
-          </label>
-          <label class="block">
-            <span class="text-sm text-slate-300">Observação (opcional)</span>
-            <textarea name="notes" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white"></textarea>
-          </label>
-          <div class="flex justify-end gap-2 pt-2">
-            <button type="button" onclick="toggleModal('patrimonioModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
-            <button type="submit" class="px-4 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-emerald-500/30 hover:bg-emerald-400">Salvar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <div id="posicaoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
       <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-3xl w-full p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
             <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Posições</p>
-            <h3 class="text-xl font-semibold text-white">Adicionar posições</h3>
+            <h3 class="text-xl font-semibold text-white">Adicionar Ativo</h3>
           </div>
           <button onclick="toggleModal('posicaoModal', false)" class="text-slate-400 hover:text-slate-200">✕</button>
         </div>
@@ -203,16 +175,9 @@
               <input name="maturity_date" type="date" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
             </label>
           </div>
-          <div class="flex justify-end">
-            <button type="button" onclick="addPosicaoLinha()" class="px-4 py-2 bg-indigo-500/10 text-indigo-200 rounded-lg border border-indigo-500/40 hover:bg-indigo-500/20">+ Adicionar linha</button>
-          </div>
-          <div class="bg-slate-800/80 rounded-xl p-3 border border-white/5">
-            <div class="text-sm font-semibold text-white mb-2">Linhas adicionadas</div>
-            <div id="posicoesPreview" class="space-y-2 max-h-56 overflow-y-auto"></div>
-          </div>
           <div class="flex justify-end gap-2 pt-2">
             <button type="button" onclick="toggleModal('posicaoModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
-            <button type="submit" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-indigo-500/30 hover:bg-indigo-400">Salvar posições</button>
+            <button type="submit" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-indigo-500/30 hover:bg-indigo-400">Salvar ativo</button>
           </div>
         </form>
       </div>
@@ -221,7 +186,6 @@
     <script>
       const state = {
         charts: {},
-        posicoesBuffer: [],
         lookups: { banks: [], types: [] },
       };
 
@@ -230,21 +194,15 @@
         document.querySelectorAll('input[type="date"]').forEach((input) => (input.value = today));
         fetchDashboard();
 
-        document.getElementById("addPatrimonioBtn").onclick = () => toggleModal("patrimonioModal", true);
         document.getElementById("addPosicaoBtn").onclick = () => toggleModal("posicaoModal", true);
         document.getElementById("periodoSelect").onchange = () => fetchDashboard();
         document.getElementById("dataPosicaoSelect").onchange = () => fetchDashboard();
 
-        document.getElementById("patrimonioForm").addEventListener("submit", handlePatrimonioSubmit);
         document.getElementById("posicaoForm").addEventListener("submit", handlePosicaoSubmit);
       });
 
       function toggleModal(id, show) {
         document.getElementById(id).classList.toggle("hidden", !show);
-        if (!show && id === "posicaoModal") {
-          state.posicoesBuffer = [];
-          renderPosicoesPreview();
-        }
       }
 
       function showLoader(show) {
@@ -412,89 +370,25 @@
           .join("")}`;
       }
 
-      function handlePatrimonioSubmit(e) {
+      function handlePosicaoSubmit(e) {
         e.preventDefault();
-        const formData = Object.fromEntries(new FormData(e.target).entries());
-        showLoader(true);
-        google.script.run
-          .withSuccessHandler(() => {
-            showLoader(false);
-            toggleModal("patrimonioModal", false);
-            e.target.reset();
-            fetchDashboard();
-          })
-          .withFailureHandler(handleError)
-          .addPatrimonioEntry(formData);
-      }
-
-      function addPosicaoLinha() {
-        const form = document.getElementById("posicaoForm");
-        const data = Object.fromEntries(new FormData(form).entries());
+        const data = Object.fromEntries(new FormData(e.target).entries());
         if (!data.date || !data.bank || !data.investment_type || !data.invested_value || !data.current_value || !data.investment_date) {
           alert("Preencha data, banco, tipo, valores e data de investimento.");
           return;
         }
-        state.posicoesBuffer.push({ ...data });
-        renderPosicoesPreview();
-        form.invested_value.value = "";
-        form.current_value.value = "";
-        form.asset.value = "";
-        form.maturity_date.value = "";
-      }
-
-      function renderPosicoesPreview() {
-        const container = document.getElementById("posicoesPreview");
-        if (!state.posicoesBuffer.length) {
-          container.innerHTML = '<p class="text-sm text-slate-500">Nenhuma linha adicionada.</p>';
-          return;
-        }
-        container.innerHTML = state.posicoesBuffer
-          .map(
-            (item, idx) => `
-          <div class="bg-slate-900/70 border border-white/10 rounded-lg p-3 flex items-center justify-between shadow-sm">
-            <div>
-              <p class="text-sm font-semibold text-white">${item.bank} • ${item.investment_type}</p>
-              <p class="text-xs text-slate-400">${item.date} ${item.asset ? "• " + item.asset : ""}</p>
-              <p class="text-xs text-slate-500">Investido em ${item.investment_date}${item.maturity_date ? " • Venc.: " + item.maturity_date : ""}</p>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="text-right">
-                <p class="text-xs text-slate-400">Investido</p>
-                <p class="font-semibold text-amber-300">${formatCurrency(item.invested_value)}</p>
-                <p class="text-xs text-slate-400">Atual</p>
-                <p class="font-semibold text-emerald-300">${formatCurrency(item.current_value)}</p>
-              </div>
-              <button class="text-red-400 text-sm hover:text-red-200" onclick="removePosicao(${idx})">Remover</button>
-            </div>
-          </div>`
-          )
-          .join("");
-      }
-
-      function removePosicao(index) {
-        state.posicoesBuffer.splice(index, 1);
-        renderPosicoesPreview();
-      }
-
-      function handlePosicaoSubmit(e) {
-        e.preventDefault();
-        if (!state.posicoesBuffer.length) {
-          alert("Adicione ao menos uma posição.");
-          return;
-        }
-        const newBanks = extractNewItems(state.lookups.banks, state.posicoesBuffer.map((p) => p.bank));
-        const newTypes = extractNewItems(state.lookups.types, state.posicoesBuffer.map((p) => p.investment_type));
+        const newBanks = extractNewItems(state.lookups.banks, [data.bank]);
+        const newTypes = extractNewItems(state.lookups.types, [data.investment_type]);
         showLoader(true);
         google.script.run
           .withSuccessHandler(() => {
             showLoader(false);
-            state.posicoesBuffer = [];
-            renderPosicoesPreview();
             toggleModal("posicaoModal", false);
+            e.target.reset();
             fetchDashboard();
           })
           .withFailureHandler(handleError)
-          .addPosicoesEntries({ entries: state.posicoesBuffer, newBanks, newTypes });
+          .addPosicoesEntries({ entries: [data], newBanks, newTypes });
       }
 
       function updateLookups() {
