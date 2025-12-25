@@ -78,7 +78,7 @@ function ensureHeaders(sheet, name) {
 function getDashboardData(period, positionDate) {
   setupSheets();
   const patrimonio = readTable(SHEET_NAMES.PATRIMONIO_HIST, ["date", "total_value", "notes"]);
-  const posicoes = readTable(SHEET_NAMES.POSICOES, POSICOES_HEADERS);
+  const posicoes = readTable(SHEET_NAMES.POSICOES, POSICOES_HEADERS, true);
   const banks = readUniqueColumn(SHEET_NAMES.BANCOS, "bank");
   const types = readUniqueColumn(SHEET_NAMES.TIPOS, "investment_type");
 
@@ -104,6 +104,7 @@ function getDashboardData(period, positionDate) {
     totalAtualPosicoes: alocacao.totalCurrent,
     rentabilidadeTotalValor: alocacao.totalCurrent - alocacao.totalInvested,
     rentabilidadeTotalPercent: alocacao.totalInvested ? ((alocacao.totalCurrent - alocacao.totalInvested) / alocacao.totalInvested) * 100 : null,
+    posicoesList: alocacao.posicoesList,
   };
 }
 
@@ -163,19 +164,44 @@ function addPosicoesEntries(payload) {
   return getDashboardData("12m");
 }
 
-function readTable(sheetName, headers) {
+function updatePosicaoEntry(entry) {
+  setupSheets();
+  const { rowNumber } = entry;
+  if (!rowNumber) throw new Error("Linha inválida para edição.");
+  const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.POSICOES);
+  const invested = Number(entry.invested_value);
+  const current = Number(entry.current_value);
+  if (!entry.date || !entry.bank || !entry.investment_type) throw new Error("Data, banco e tipo são obrigatórios.");
+  if (isNaN(invested) || isNaN(current)) throw new Error("Valores inválidos.");
+  const values = [
+    entry.date,
+    entry.bank,
+    entry.investment_type,
+    entry.asset || "",
+    entry.investment_date || "",
+    entry.maturity_date || "",
+    invested,
+    current,
+  ];
+  sheet.getRange(Number(rowNumber), 1, 1, POSICOES_HEADERS.length).setValues([values]);
+  return getDashboardData("12m");
+}
+
+function readTable(sheetName, headers, includeRowNumber) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
   return values
-    .filter((row) => row.some((cell) => cell !== ""))
-    .map((row) =>
-      headers.reduce((acc, key, index) => {
+    .map((row, idx) => {
+      const obj = headers.reduce((acc, key, index) => {
         acc[key] = row[index];
         return acc;
-      }, {})
-    );
+      }, {});
+      if (includeRowNumber) obj.rowNumber = idx + 2;
+      return obj;
+    })
+    .filter((row) => Object.values(row).some((cell) => cell !== ""));
 }
 
 function readUniqueColumn(sheetName, key) {
@@ -334,6 +360,13 @@ function buildAlocacao(posicoes, positionDate) {
   const porBanco = aggregateByKey(filtered, "bank", totalCurrent);
   const porTipo = aggregateByKey(filtered, "investment_type", totalCurrent);
 
+  const posicoesList = filtered.map((item) => ({
+    ...item,
+    date: formatDateLabel(item.date),
+    investment_date: item.investment_date ? formatDateLabel(item.investment_date) : "",
+    maturity_date: item.maturity_date ? formatDateLabel(item.maturity_date) : "",
+  }));
+
   return {
     porBanco,
     porTipo,
@@ -342,6 +375,7 @@ function buildAlocacao(posicoes, positionDate) {
     datasDisponiveis,
     totalCurrent,
     totalInvested,
+    posicoesList,
   };
 }
 

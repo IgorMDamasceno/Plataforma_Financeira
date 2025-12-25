@@ -15,9 +15,7 @@
           <h1 class="text-3xl font-bold text-white mt-1">Dashboard Financeiro</h1>
           <p class="text-sm text-slate-400">Controle de patrimônio, alocação e rentabilidade.</p>
         </div>
-        <div class="flex gap-3">
-          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition">Adicionar Ativo</button>
-        </div>
+        <div class="flex gap-3"></div>
       </header>
 
       <main class="p-6 space-y-6">
@@ -72,6 +70,33 @@
               <span class="text-xs uppercase tracking-[0.2em] text-slate-400">Donut</span>
             </div>
             <canvas id="pizzaBanco"></canvas>
+          </div>
+        </section>
+
+        <section class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Ativos</p>
+              <h2 class="text-lg font-semibold text-white">Lista na data selecionada</h2>
+            </div>
+          <button id="addPosicaoBtn" class="px-4 py-2 bg-indigo-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-indigo-500/30 hover:bg-indigo-400">Adicionar Ativo</button>
+        </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="text-left text-slate-400 border-b border-white/10">
+                  <th class="py-2 pr-4">Banco</th>
+                  <th class="py-2 pr-4">Tipo</th>
+                  <th class="py-2 pr-4">Ativo</th>
+                  <th class="py-2 pr-4">Investido</th>
+                  <th class="py-2 pr-4">Atual</th>
+                  <th class="py-2 pr-4">Investimento</th>
+                  <th class="py-2 pr-4">Vencimento</th>
+                  <th class="py-2 pr-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaAtivos"></tbody>
+            </table>
           </div>
         </section>
 
@@ -194,7 +219,7 @@
         document.querySelectorAll('input[type="date"]').forEach((input) => (input.value = today));
         fetchDashboard();
 
-        document.getElementById("addPosicaoBtn").onclick = () => toggleModal("posicaoModal", true);
+        document.getElementById("addPosicaoBtn").onclick = () => openPosicaoModal();
         document.getElementById("periodoSelect").onchange = () => fetchDashboard();
         document.getElementById("dataPosicaoSelect").onchange = () => fetchDashboard();
 
@@ -223,6 +248,7 @@
             renderCharts(data);
             renderTabelas(data);
             renderDatasPosicoes(data.datasPosicoes, dataPosicao);
+            renderAtivos(data.posicoesList);
           })
           .withFailureHandler(handleError)
           .getDashboardData(periodo, dataPosicao);
@@ -231,6 +257,58 @@
       function handleError(err) {
         showLoader(false);
         alert(err?.message || "Algo deu errado.");
+      }
+
+      function renderAtivos(list) {
+        const tbody = document.getElementById("tabelaAtivos");
+        if (!list || !list.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="py-3 text-slate-400">Nenhum ativo para a data selecionada.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = list
+          .map(
+            (item) => `
+        <tr class="border-b border-white/5 last:border-0">
+          <td class="py-2 pr-4">${item.bank || "—"}</td>
+          <td class="py-2 pr-4">${item.investment_type || "—"}</td>
+          <td class="py-2 pr-4">${item.asset || "—"}</td>
+          <td class="py-2 pr-4">${formatCurrency(item.invested_value)}</td>
+          <td class="py-2 pr-4">${formatCurrency(item.current_value)}</td>
+          <td class="py-2 pr-4">${item.investment_date || "—"}</td>
+          <td class="py-2 pr-4">${item.maturity_date || "—"}</td>
+          <td class="py-2 pr-4">
+            <button class="px-3 py-1 text-xs bg-white/10 border border-white/10 rounded hover:bg-white/20" onclick='editAtivo(${JSON.stringify(item)})'>Editar</button>
+          </td>
+        </tr>`
+          )
+          .join("");
+      }
+
+      function openPosicaoModal() {
+        document.getElementById("posicaoForm").reset();
+        document.querySelector('input[name="rowNumber"]')?.remove();
+        toggleModal("posicaoModal", true);
+      }
+
+      function editAtivo(item) {
+        const form = document.getElementById("posicaoForm");
+        form.date.value = item.date ? item.date.split("T")[0] || item.date : "";
+        form.bank.value = item.bank || "";
+        form.investment_type.value = item.investment_type || "";
+        form.asset.value = item.asset || "";
+        form.invested_value.value = item.invested_value || "";
+        form.current_value.value = item.current_value || "";
+        form.investment_date.value = item.investment_date ? item.investment_date.split("T")[0] || item.investment_date : "";
+        form.maturity_date.value = item.maturity_date ? item.maturity_date.split("T")[0] || item.maturity_date : "";
+        let hidden = form.querySelector('input[name="rowNumber"]');
+        if (!hidden) {
+          hidden = document.createElement("input");
+          hidden.type = "hidden";
+          hidden.name = "rowNumber";
+          form.appendChild(hidden);
+        }
+        hidden.value = item.rowNumber;
+        toggleModal("posicaoModal", true);
       }
 
       function renderCards(data) {
@@ -380,15 +458,18 @@
         const newBanks = extractNewItems(state.lookups.banks, [data.bank]);
         const newTypes = extractNewItems(state.lookups.types, [data.investment_type]);
         showLoader(true);
-        google.script.run
-          .withSuccessHandler(() => {
-            showLoader(false);
-            toggleModal("posicaoModal", false);
-            e.target.reset();
-            fetchDashboard();
-          })
-          .withFailureHandler(handleError)
-          .addPosicoesEntries({ entries: [data], newBanks, newTypes });
+        const runner = google.script.run.withSuccessHandler(() => {
+          showLoader(false);
+          toggleModal("posicaoModal", false);
+          e.target.reset();
+          fetchDashboard();
+        }).withFailureHandler(handleError);
+
+        if (data.rowNumber) {
+          runner.updatePosicaoEntry(data);
+        } else {
+          runner.addPosicoesEntries({ entries: [data], newBanks, newTypes });
+        }
       }
 
       function updateLookups() {
