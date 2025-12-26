@@ -90,13 +90,14 @@
                   <th class="py-2 pr-4">Ativo</th>
                   <th class="py-2 pr-4">Investido</th>
                   <th class="py-2 pr-4">Atual</th>
-                  <th class="py-2 pr-4">Investimento</th>
-                  <th class="py-2 pr-4">Vencimento</th>
-                  <th class="py-2 pr-4">Ações</th>
-                </tr>
-              </thead>
-              <tbody id="tabelaAtivos"></tbody>
-            </table>
+              <th class="py-2 pr-4">Investimento</th>
+              <th class="py-2 pr-4">Vencimento</th>
+              <th class="py-2 pr-4">Recorrente</th>
+              <th class="py-2 pr-4">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaAtivos"></tbody>
+        </table>
           </div>
         </section>
 
@@ -199,6 +200,14 @@
               <span class="text-sm text-slate-300">Data de vencimento (opcional)</span>
               <input name="maturity_date" type="date" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
             </label>
+            <label class="flex items-center gap-2 mt-2">
+              <input name="recurring" type="checkbox" value="true" class="h-4 w-4 rounded border-white/20 bg-slate-800 text-indigo-500" />
+              <span class="text-sm text-slate-300">Investimento recorrente (aporte mensal)</span>
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-300">Valor mensal do aporte (R$)</span>
+              <input name="recurring_amount" type="number" step="0.01" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" placeholder="Ex: 500,00" />
+            </label>
           </div>
           <div class="flex justify-end gap-2 pt-2">
             <button type="button" onclick="toggleModal('posicaoModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
@@ -262,7 +271,7 @@
       function renderAtivos(list) {
         const tbody = document.getElementById("tabelaAtivos");
         if (!list || !list.length) {
-          tbody.innerHTML = '<tr><td colspan="8" class="py-3 text-slate-400">Nenhum ativo para a data selecionada.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" class="py-3 text-slate-400">Nenhum ativo para a data selecionada.</td></tr>';
           return;
         }
         tbody.innerHTML = list
@@ -276,6 +285,7 @@
           <td class="py-2 pr-4">${formatCurrency(item.current_value)}</td>
           <td class="py-2 pr-4">${item.investment_date || "—"}</td>
           <td class="py-2 pr-4">${item.maturity_date || "—"}</td>
+          <td class="py-2 pr-4">${item.recurring ? formatCurrency(item.recurring_amount || 0) : "—"}</td>
           <td class="py-2 pr-4">
             <button class="px-3 py-1 text-xs bg-white/10 border border-white/10 rounded hover:bg-white/20" onclick='editAtivo(${JSON.stringify(item)})'>Editar</button>
           </td>
@@ -287,6 +297,8 @@
       function openPosicaoModal() {
         document.getElementById("posicaoForm").reset();
         document.querySelector('input[name="rowNumber"]')?.remove();
+        document.getElementById("posicaoForm").recurring.checked = false;
+        document.getElementById("posicaoForm").recurring_amount.value = "";
         toggleModal("posicaoModal", true);
       }
 
@@ -300,6 +312,8 @@
         form.current_value.value = item.current_value || "";
         form.investment_date.value = item.investment_date ? item.investment_date.split("T")[0] || item.investment_date : "";
         form.maturity_date.value = item.maturity_date ? item.maturity_date.split("T")[0] || item.maturity_date : "";
+        form.recurring.checked = !!item.recurring;
+        form.recurring_amount.value = item.recurring ? item.recurring_amount || "" : "";
         let hidden = form.querySelector('input[name="rowNumber"]');
         if (!hidden) {
           hidden = document.createElement("input");
@@ -455,6 +469,7 @@
           alert("Preencha data, banco, tipo, valores e data de investimento.");
           return;
         }
+        data.recurring = data.recurring === "true" || data.recurring === "on";
         const newBanks = extractNewItems(state.lookups.banks, [data.bank]);
         const newTypes = extractNewItems(state.lookups.types, [data.investment_type]);
         showLoader(true);

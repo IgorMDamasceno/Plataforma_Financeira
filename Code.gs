@@ -5,7 +5,18 @@ const SHEET_NAMES = {
   TIPOS: "TIPOS",
 };
 
-const POSICOES_HEADERS = ["date", "bank", "investment_type", "asset", "investment_date", "maturity_date", "invested_value", "current_value"];
+const POSICOES_HEADERS = [
+  "date",
+  "bank",
+  "investment_type",
+  "asset",
+  "investment_date",
+  "maturity_date",
+  "invested_value",
+  "current_value",
+  "recurring",
+  "recurring_amount",
+];
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
@@ -132,6 +143,7 @@ function addPosicoesEntries(payload) {
     }
     const invested = Number(item.invested_value);
     const current = Number(item.current_value);
+    const recurringAmount = Number(item.recurring_amount || 0);
     if (isNaN(invested) || isNaN(current)) throw new Error("Valores inválidos.");
     return [
       item.date,
@@ -142,6 +154,8 @@ function addPosicoesEntries(payload) {
       item.maturity_date || "",
       invested,
       current,
+      item.recurring === true || item.recurring === "true" || item.recurring === "on",
+      isNaN(recurringAmount) ? 0 : recurringAmount,
     ];
   });
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, POSICOES_HEADERS.length).setValues(rows);
@@ -172,6 +186,7 @@ function updatePosicaoEntry(entry) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.POSICOES);
   const invested = Number(entry.invested_value);
   const current = Number(entry.current_value);
+  const recurringAmount = Number(entry.recurring_amount || 0);
   if (!entry.date || !entry.bank || !entry.investment_type) throw new Error("Data, banco e tipo são obrigatórios.");
   if (isNaN(invested) || isNaN(current)) throw new Error("Valores inválidos.");
   const values = [
@@ -183,6 +198,8 @@ function updatePosicaoEntry(entry) {
     entry.maturity_date || "",
     invested,
     current,
+    entry.recurring === true || entry.recurring === "true" || entry.recurring === "on",
+    isNaN(recurringAmount) ? 0 : recurringAmount,
   ];
   sheet.getRange(Number(rowNumber), 1, 1, POSICOES_HEADERS.length).setValues([values]);
   return getDashboardData("12m");
@@ -363,6 +380,8 @@ function buildAlocacao(posicoes, positionDate) {
       maturity_date: item.maturity_date ? new Date(item.maturity_date) : null,
       invested_value: Number(item.invested_value),
       current_value: Number(item.current_value),
+      recurring: item.recurring === true || item.recurring === "true" || item.recurring === "on",
+      recurring_amount: Number(item.recurring_amount || 0),
     }))
     .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.invested_value) && !isNaN(item.current_value))
     .sort((a, b) => a.date - b.date);
@@ -381,6 +400,7 @@ function buildAlocacao(posicoes, positionDate) {
     date: formatDateLabel(item.date),
     investment_date: item.investment_date ? formatDateLabel(item.investment_date) : "",
     maturity_date: item.maturity_date ? formatDateLabel(item.maturity_date) : "",
+    recurring_amount: Number(item.recurring_amount || 0),
   }));
 
   return {
