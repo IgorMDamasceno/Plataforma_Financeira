@@ -82,8 +82,9 @@ function getDashboardData(period, positionDate) {
   const banks = readUniqueColumn(SHEET_NAMES.BANCOS, "bank");
   const types = readUniqueColumn(SHEET_NAMES.TIPOS, "investment_type");
 
-  const patrimonioData = buildPatrimonioData(patrimonio, period);
   const alocacao = buildAlocacao(posicoes, positionDate);
+  const syntheticSeries = buildSyntheticPatrimonioFromAlocacao(alocacao);
+  const patrimonioData = buildPatrimonioData(patrimonio, period, syntheticSeries);
 
   return {
     patrimonioAtual: alocacao.totalCurrent,
@@ -224,8 +225,27 @@ function filterNewUnique(sheet, incoming) {
   return incoming.filter((item) => item && !existing.has(item));
 }
 
-function buildPatrimonioData(records, period) {
-  if (!records.length) {
+function buildPatrimonioData(records, period, fallbackSeries) {
+  let parsed = records
+    .map((item) => ({
+      date: new Date(item.date),
+      total_value: Number(item.total_value),
+      notes: item.notes,
+    }))
+    .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.total_value))
+    .sort((a, b) => a.date - b.date);
+
+  if (!parsed.length && Array.isArray(fallbackSeries) && fallbackSeries.length) {
+    parsed = fallbackSeries
+      .map((item) => ({
+        date: new Date(item.date),
+        total_value: Number(item.total_value),
+      }))
+      .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.total_value))
+      .sort((a, b) => a.date - b.date);
+  }
+
+  if (!parsed.length) {
     return {
       patrimonioAtual: 0,
       crescimentoMensalPercent: null,
@@ -235,15 +255,6 @@ function buildPatrimonioData(records, period) {
       crescimentoMensalSeries: [],
     };
   }
-
-  const parsed = records
-    .map((item) => ({
-      date: new Date(item.date),
-      total_value: Number(item.total_value),
-      notes: item.notes,
-    }))
-    .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.total_value))
-    .sort((a, b) => a.date - b.date);
 
   const patrimonioAtual = parsed[parsed.length - 1].total_value;
 
@@ -377,6 +388,40 @@ function buildAlocacao(posicoes, positionDate) {
     totalInvested,
     posicoesList,
   };
+}
+
+function buildSyntheticPatrimonioFromAlocacao(alocacao) {
+  if (!alocacao.posicoesList || !alocacao.posicoesList.length) return [];
+  const valid = alocacao.posicoesList
+    .map((item) => ({
+      investmentDate: item.investment_date ? new Date(item.investment_date) : null,
+      currentDate: item.date ? new Date(item.date) : null,
+      invested: Number(item.invested_value),
+      current: Number(item.current_value),
+    }))
+    .filter((item) => item.investmentDate && item.currentDate && !isNaN(item.investmentDate.getTime()) && !isNaN(item.currentDate.getTime()) && item.invested > 0 && item.current >= 0);
+
+  if (!valid.length) return [];
+
+  const startDate = new Date(Math.min(...valid.map((v) => v.investmentDate.getTime())));
+  const endDate = new Date(Math.max(...valid.map((v) => v.currentDate.getTime())));
+  const totalInvested = valid.reduce((sum, v) => sum + v.invested, 0);
+  const totalCurrent = valid.reduce((sum, v) => sum + v.current, 0);
+  if (totalInvested <= 0) return [];
+
+  const daysDiff = Math.max(1, Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)));
+  const periods = daysDiff || 1;
+  const rate = Math.pow(totalCurrent / totalInvested || 1, 1 / periods) - 1;
+
+  const series = [];
+  for (let i = 0; i <= periods; i++) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + i);
+    const total_value = totalInvested * Math.pow(1 + rate, i);
+    series.push({ date, total_value });
+  }
+
+  return series;
 }
 
 function resolvePositionDate(records, positionDate) {
