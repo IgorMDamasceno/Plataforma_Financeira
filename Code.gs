@@ -215,9 +215,14 @@ function readUniqueColumn(sheetName, key) {
 }
 
 function filterNewUnique(sheet, incoming) {
+  if (!incoming || !incoming.length) return [];
+  const last = sheet.getLastRow();
+  if (last < 2) {
+    return incoming.filter((item) => item);
+  }
   const existing = new Set(
     sheet
-      .getRange(2, 1, Math.max(sheet.getLastRow() - 1, 0), 1)
+      .getRange(2, 1, last - 1, 1)
       .getValues()
       .flat()
       .filter((v) => v !== "")
