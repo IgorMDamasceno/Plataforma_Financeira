@@ -97,9 +97,32 @@
             </tr>
           </thead>
           <tbody id="tabelaAtivos"></tbody>
-        </table>
+          </table>
+        </div>
+      </section>
+
+      <section class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Extrato geral</p>
+            <h2 class="text-lg font-semibold text-white">Movimentações da carteira</h2>
           </div>
-        </section>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-slate-400 border-b border-white/10">
+                <th class="py-2 pr-3">Data</th>
+                <th class="py-2 pr-3">Tipo</th>
+                <th class="py-2 pr-3">Ativo</th>
+                <th class="py-2 pr-3">Valor</th>
+                <th class="py-2 pr-3">Obs</th>
+              </tr>
+            </thead>
+            <tbody id="extratoGeralTabela"></tbody>
+          </table>
+        </div>
+      </section>
 
         <section class="bg-slate-900/60 border border-white/5 rounded-2xl shadow-lg shadow-black/30 p-5">
           <div class="flex items-center justify-between mb-3">
@@ -221,6 +244,70 @@
       </div>
     </div>
 
+    <div id="transacaoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
+      <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Ajuste</p>
+            <h3 class="text-xl font-semibold text-white" id="transacaoTitulo">Ajustar ativo</h3>
+          </div>
+          <button onclick="toggleModal('transacaoModal', false)" class="text-slate-400 hover:text-slate-200">✕</button>
+        </div>
+        <form id="transacaoForm" class="space-y-3">
+          <input type="hidden" name="rowNumber" />
+          <label class="block">
+            <span class="text-sm text-slate-300">Tipo</span>
+            <select name="type" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white">
+              <option value="aporte">Aporte</option>
+              <option value="retirada">Retirada</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-300">Valor</span>
+            <input name="amount" type="number" step="0.01" required class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-300">Data</span>
+            <input name="date" type="date" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-300">Observação (opcional)</span>
+            <textarea name="notes" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white"></textarea>
+          </label>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="toggleModal('transacaoModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
+            <button type="submit" class="px-4 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-lg shadow-lg shadow-emerald-500/30 hover:bg-emerald-400">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="extratoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
+      <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-3xl w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-indigo-400 font-semibold">Extrato</p>
+            <h3 class="text-xl font-semibold text-white" id="extratoTitulo">Extrato</h3>
+          </div>
+          <button onclick="toggleModal('extratoModal', false)" class="text-slate-400 hover:text-slate-200">✕</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-slate-400 border-b border-white/10">
+                <th class="py-2 pr-3">Data</th>
+                <th class="py-2 pr-3">Tipo</th>
+                <th class="py-2 pr-3">Ativo</th>
+                <th class="py-2 pr-3">Valor</th>
+                <th class="py-2 pr-3">Obs</th>
+              </tr>
+            </thead>
+            <tbody id="extratoAtivoTabela"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <script>
       const state = {
         charts: {},
@@ -237,6 +324,7 @@
         document.getElementById("dataPosicaoSelect").onchange = () => fetchDashboard();
 
         document.getElementById("posicaoForm").addEventListener("submit", handlePosicaoSubmit);
+        document.getElementById("transacaoForm").addEventListener("submit", handleTransacaoSubmit);
       });
 
       function toggleModal(id, show) {
@@ -256,12 +344,14 @@
             showLoader(false);
             if (!data) return;
             state.lookups = data.lookups;
+            state.extrato = data.extrato || [];
             updateLookups();
             renderCards(data);
             renderCharts(data);
             renderTabelas(data);
             renderDatasPosicoes(data.datasPosicoes, dataPosicao);
             renderAtivos(data.posicoesList);
+            renderExtratoGeral(state.extrato);
           })
           .withFailureHandler(handleError)
           .getDashboardData(periodo, dataPosicao);
@@ -291,11 +381,41 @@
           <td class="py-2 pr-4">${item.maturity_date || "—"}</td>
           <td class="py-2 pr-4">${item.recurring ? `${formatCurrency(item.recurring_amount || 0)}${item.recurring_start_date ? " desde " + item.recurring_start_date : ""}` : "—"}</td>
           <td class="py-2 pr-4">
-            <button class="px-3 py-1 text-xs bg-white/10 border border-white/10 rounded hover:bg-white/20" onclick='editAtivo(${JSON.stringify(item)})'>Editar</button>
+            <div class="flex flex-wrap gap-2">
+              <button class="px-3 py-1 text-xs bg-white/10 border border-white/10 rounded hover:bg-white/20" onclick='editAtivo(${JSON.stringify(item)})'>Editar</button>
+              <button class="px-3 py-1 text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-100 rounded hover:bg-emerald-500/30" onclick='openTransacao(${JSON.stringify(item)}, "aporte")'>Aportar</button>
+              <button class="px-3 py-1 text-xs bg-amber-500/20 border border-amber-500/40 text-amber-100 rounded hover:bg-amber-500/30" onclick='openTransacao(${JSON.stringify(item)}, "retirada")'>Retirar</button>
+              <button class="px-3 py-1 text-xs bg-indigo-500/20 border border-indigo-500/40 text-indigo-100 rounded hover:bg-indigo-500/30" onclick='openExtratoAtivo(${JSON.stringify(item)})'>Extrato</button>
+            </div>
           </td>
         </tr>`
           )
           .join("");
+      }
+
+      function renderExtrato(list, targetId) {
+        const tbody = document.getElementById(targetId);
+        if (!tbody) return;
+        if (!list || !list.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="py-2 text-slate-400">Sem movimentações.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = list
+          .map(
+            (item) => `
+          <tr class="border-b border-white/5 last:border-0">
+            <td class="py-2 pr-3">${item.date || "—"}</td>
+            <td class="py-2 pr-3 capitalize">${item.type || "—"}</td>
+            <td class="py-2 pr-3">${[item.bank, item.investment_type, item.asset].filter(Boolean).join(" • ")}</td>
+            <td class="py-2 pr-3">${formatCurrency(item.amount)}</td>
+            <td class="py-2 pr-3 truncate max-w-xs" title="${item.notes || ""}">${item.notes || "—"}</td>
+          </tr>`
+          )
+          .join("");
+      }
+
+      function renderExtratoGeral(list) {
+        renderExtrato(list, "extratoGeralTabela");
       }
 
       function openPosicaoModal() {
@@ -305,6 +425,27 @@
         document.getElementById("posicaoForm").recurring_amount.value = "";
         document.getElementById("posicaoForm").recurring_start_date.value = "";
         toggleModal("posicaoModal", true);
+      }
+
+      function openTransacao(item, tipo = "aporte") {
+        const form = document.getElementById("transacaoForm");
+        form.reset();
+        form.type.value = tipo;
+        form.rowNumber.value = item.rowNumber || item.row_number || "";
+        form.date.value = new Date().toISOString().split("T")[0];
+        const titulo = tipo === "retirada" ? "Retirar valor do ativo" : "Aportar valor no ativo";
+        document.getElementById("transacaoTitulo").textContent = `${titulo} (${item.bank || ""} • ${item.investment_type || ""} ${item.asset ? "• " + item.asset : ""})`;
+        toggleModal("transacaoModal", true);
+      }
+
+      function openExtratoAtivo(item) {
+        const titulo = `Extrato - ${item.bank || ""} • ${item.investment_type || ""} ${item.asset ? "• " + item.asset : ""}`;
+        document.getElementById("extratoTitulo").textContent = titulo;
+        const filtered = (state.extrato || []).filter(
+          (i) => i.posicao_row == item.rowNumber || (i.bank === item.bank && i.investment_type === item.investment_type && i.asset === item.asset)
+        );
+        renderExtrato(filtered, "extratoAtivoTabela");
+        toggleModal("extratoModal", true);
       }
 
       function editAtivo(item) {
@@ -495,6 +636,25 @@
         } else {
           runner.addPosicoesEntries({ entries: [data], newBanks, newTypes });
         }
+      }
+
+      function handleTransacaoSubmit(e) {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target).entries());
+        if (!data.rowNumber || !data.amount || !data.type) {
+          alert("Preencha tipo, valor e selecione um ativo.");
+          return;
+        }
+        showLoader(true);
+        google.script.run
+          .withSuccessHandler(() => {
+            showLoader(false);
+            toggleModal("transacaoModal", false);
+            e.target.reset();
+            fetchDashboard();
+          })
+          .withFailureHandler(handleError)
+          .adjustPosicaoValue(data);
       }
 
       function updateLookups() {

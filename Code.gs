@@ -3,6 +3,7 @@ const SHEET_NAMES = {
   POSICOES: "POSICOES",
   BANCOS: "BANCOS",
   TIPOS: "TIPOS",
+  EXTRATO: "EXTRATO",
 };
 
 const POSICOES_HEADERS = [
@@ -18,6 +19,7 @@ const POSICOES_HEADERS = [
   "recurring_amount",
   "recurring_start_date",
 ];
+const EXTRATO_HEADERS = ["date", "type", "bank", "investment_type", "asset", "amount", "posicao_row", "notes"];
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
@@ -64,6 +66,7 @@ function addHeaders(sheet, name) {
     [SHEET_NAMES.POSICOES]: POSICOES_HEADERS,
     [SHEET_NAMES.BANCOS]: ["bank"],
     [SHEET_NAMES.TIPOS]: ["investment_type"],
+    [SHEET_NAMES.EXTRATO]: EXTRATO_HEADERS,
   }[name];
 
   if (headers && headers.length) {
@@ -77,6 +80,7 @@ function ensureHeaders(sheet, name) {
     [SHEET_NAMES.POSICOES]: POSICOES_HEADERS,
     [SHEET_NAMES.BANCOS]: ["bank"],
     [SHEET_NAMES.TIPOS]: ["investment_type"],
+    [SHEET_NAMES.EXTRATO]: EXTRATO_HEADERS,
   }[name];
   if (!headers) return;
 
@@ -91,6 +95,7 @@ function getDashboardData(period, positionDate) {
   setupSheets();
   const patrimonio = readTable(SHEET_NAMES.PATRIMONIO_HIST, ["date", "total_value", "notes"]);
   const posicoes = readTable(SHEET_NAMES.POSICOES, POSICOES_HEADERS, true);
+  const extrato = readTable(SHEET_NAMES.EXTRATO, EXTRATO_HEADERS, true).sort((a, b) => new Date(b.date) - new Date(a.date));
   const banks = readUniqueColumn(SHEET_NAMES.BANCOS, "bank");
   const types = readUniqueColumn(SHEET_NAMES.TIPOS, "investment_type");
 
@@ -118,6 +123,7 @@ function getDashboardData(period, positionDate) {
     rentabilidadeTotalValor: alocacao.totalCurrent - alocacao.totalInvested,
     rentabilidadeTotalPercent: alocacao.totalInvested ? ((alocacao.totalCurrent - alocacao.totalInvested) / alocacao.totalInvested) * 100 : null,
     posicoesList: alocacao.posicoesList,
+    extrato: extrato.slice(0, 200),
   };
 }
 
@@ -216,6 +222,53 @@ function updatePosicaoEntry(entry) {
   return getDashboardData("12m");
 }
 
+function adjustPosicaoValue(entry) {
+  setupSheets();
+  const { rowNumber, type, amount, date, notes } = entry;
+  if (!rowNumber) throw new Error("Linha inválida para ajuste.");
+  const delta = Number(amount);
+  if (isNaN(delta) || delta === 0) throw new Error("Valor inválido.");
+  const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.POSICOES);
+  const row = sheet.getRange(Number(rowNumber), 1, 1, POSICOES_HEADERS.length).getValues()[0];
+  if (!row || !row.length) throw new Error("Posição não encontrada.");
+
+  const [pDate, bank, investment_type, asset, investment_date, maturity_date, invested_value, current_value, recurring, recurring_amount, recurring_start_date] = row;
+
+  const deltaSigned = type === "retirada" ? -Math.abs(delta) : Math.abs(delta);
+  const newInvested = Number(invested_value) + deltaSigned;
+  const newCurrent = Number(current_value) + deltaSigned;
+  if (newCurrent < 0) throw new Error("Saldo insuficiente para retirada.");
+
+  const updated = [
+    pDate,
+    bank,
+    investment_type,
+    asset,
+    investment_date,
+    maturity_date,
+    newInvested,
+    newCurrent,
+    recurring,
+    recurring_amount,
+    recurring_start_date,
+  ];
+
+  sheet.getRange(Number(rowNumber), 1, 1, POSICOES_HEADERS.length).setValues([updated]);
+
+  logExtrato({
+    date: date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+    type: type || "aporte",
+    bank,
+    investment_type,
+    asset,
+    amount: deltaSigned,
+    posicao_row: rowNumber,
+    notes: notes || "",
+  });
+
+  return getDashboardData("12m");
+}
+
 function readTable(sheetName, headers, includeRowNumber) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
   const lastRow = sheet.getLastRow();
@@ -256,6 +309,12 @@ function filterNewUnique(sheet, incoming) {
       .filter((v) => v !== "")
   );
   return incoming.filter((item) => item && !existing.has(item));
+}
+
+function logExtrato(entry) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAMES.EXTRATO);
+  const row = EXTRATO_HEADERS.map((key) => entry[key] ?? "");
+  sheet.appendRow(row);
 }
 
 function buildPatrimonioData(records, period, fallbackSeries) {
