@@ -459,11 +459,11 @@ function buildAlocacao(posicoes, positionDate) {
 
   const datasDisponiveis = Array.from(new Set(parsed.map((p) => formatDateLabel(p.date)))).sort();
   const targetDate = resolvePositionDate(parsed, positionDate);
-  const targetDateObj = new Date(targetDate);
+  const targetDateObj = !targetDate || isNaN(new Date(targetDate).getTime()) ? null : new Date(targetDate);
 
   const latestPerAtivo = new Map();
   parsed.forEach((item) => {
-    if (item.date > targetDateObj) return;
+    if (targetDateObj && item.date > targetDateObj) return;
     const key = `${item.bank}||${item.investment_type}||${item.asset || ""}`;
     const existing = latestPerAtivo.get(key);
     if (!existing || item.date > existing.date) {
@@ -471,7 +471,7 @@ function buildAlocacao(posicoes, positionDate) {
     }
   });
 
-  const filteredRaw = Array.from(latestPerAtivo.values());
+  const filteredRaw = latestPerAtivo.size ? Array.from(latestPerAtivo.values()) : parsed;
   const filtered = filteredRaw.map((item) => ({ ...item, effectiveInvested: computeEffectiveInvested(item) }));
   const totalCurrent = filtered.reduce((sum, item) => sum + item.current_value, 0);
   const totalInvested = filtered.reduce((sum, item) => sum + item.effectiveInvested, 0);
