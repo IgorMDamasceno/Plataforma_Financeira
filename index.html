@@ -208,6 +208,10 @@
               <span class="text-sm text-slate-300">Valor mensal do aporte (R$)</span>
               <input name="recurring_amount" type="number" step="0.01" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" placeholder="Ex: 500,00" />
             </label>
+            <label class="block">
+              <span class="text-sm text-slate-300">Início do aporte mensal</span>
+              <input name="recurring_start_date" type="date" class="mt-1 w-full px-3 py-2 border border-white/10 rounded-lg bg-slate-800 text-white" />
+            </label>
           </div>
           <div class="flex justify-end gap-2 pt-2">
             <button type="button" onclick="toggleModal('posicaoModal', false)" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg border border-white/10">Cancelar</button>
@@ -285,7 +289,7 @@
           <td class="py-2 pr-4">${formatCurrency(item.current_value)}</td>
           <td class="py-2 pr-4">${item.investment_date || "—"}</td>
           <td class="py-2 pr-4">${item.maturity_date || "—"}</td>
-          <td class="py-2 pr-4">${item.recurring ? formatCurrency(item.recurring_amount || 0) : "—"}</td>
+          <td class="py-2 pr-4">${item.recurring ? `${formatCurrency(item.recurring_amount || 0)}${item.recurring_start_date ? " desde " + item.recurring_start_date : ""}` : "—"}</td>
           <td class="py-2 pr-4">
             <button class="px-3 py-1 text-xs bg-white/10 border border-white/10 rounded hover:bg-white/20" onclick='editAtivo(${JSON.stringify(item)})'>Editar</button>
           </td>
@@ -299,6 +303,7 @@
         document.querySelector('input[name="rowNumber"]')?.remove();
         document.getElementById("posicaoForm").recurring.checked = false;
         document.getElementById("posicaoForm").recurring_amount.value = "";
+        document.getElementById("posicaoForm").recurring_start_date.value = "";
         toggleModal("posicaoModal", true);
       }
 
@@ -308,12 +313,13 @@
         form.bank.value = item.bank || "";
         form.investment_type.value = item.investment_type || "";
         form.asset.value = item.asset || "";
-        form.invested_value.value = item.invested_value || "";
+        form.invested_value.value = item.invested_value_raw ?? item.invested_value ?? "";
         form.current_value.value = item.current_value || "";
         form.investment_date.value = item.investment_date ? item.investment_date.split("T")[0] || item.investment_date : "";
         form.maturity_date.value = item.maturity_date ? item.maturity_date.split("T")[0] || item.maturity_date : "";
         form.recurring.checked = !!item.recurring;
         form.recurring_amount.value = item.recurring ? item.recurring_amount || "" : "";
+        form.recurring_start_date.value = item.recurring_start_date ? item.recurring_start_date.split("T")[0] || item.recurring_start_date : "";
         let hidden = form.querySelector('input[name="rowNumber"]');
         if (!hidden) {
           hidden = document.createElement("input");
@@ -470,6 +476,10 @@
           return;
         }
         data.recurring = data.recurring === "true" || data.recurring === "on";
+        if (data.recurring && (!data.recurring_amount || !data.recurring_start_date)) {
+          alert("Informe o valor mensal e a data de início do aporte recorrente.");
+          return;
+        }
         const newBanks = extractNewItems(state.lookups.banks, [data.bank]);
         const newTypes = extractNewItems(state.lookups.types, [data.investment_type]);
         showLoader(true);

@@ -16,6 +16,7 @@ const POSICOES_HEADERS = [
   "current_value",
   "recurring",
   "recurring_amount",
+  "recurring_start_date",
 ];
 
 function onOpen() {
@@ -144,6 +145,10 @@ function addPosicoesEntries(payload) {
     const invested = Number(item.invested_value);
     const current = Number(item.current_value);
     const recurringAmount = Number(item.recurring_amount || 0);
+    const isRecurring = item.recurring === true || item.recurring === "true" || item.recurring === "on";
+    if (isRecurring && !item.recurring_start_date) {
+      throw new Error("Informe a data de início do aporte recorrente.");
+    }
     if (isNaN(invested) || isNaN(current)) throw new Error("Valores inválidos.");
     return [
       item.date,
@@ -154,8 +159,9 @@ function addPosicoesEntries(payload) {
       item.maturity_date || "",
       invested,
       current,
-      item.recurring === true || item.recurring === "true" || item.recurring === "on",
+      isRecurring,
       isNaN(recurringAmount) ? 0 : recurringAmount,
+      item.recurring_start_date || "",
     ];
   });
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, POSICOES_HEADERS.length).setValues(rows);
@@ -189,6 +195,10 @@ function updatePosicaoEntry(entry) {
   const recurringAmount = Number(entry.recurring_amount || 0);
   if (!entry.date || !entry.bank || !entry.investment_type) throw new Error("Data, banco e tipo são obrigatórios.");
   if (isNaN(invested) || isNaN(current)) throw new Error("Valores inválidos.");
+  const isRecurring = entry.recurring === true || entry.recurring === "true" || entry.recurring === "on";
+  if (isRecurring && !entry.recurring_start_date) {
+    throw new Error("Informe a data de início do aporte recorrente.");
+  }
   const values = [
     entry.date,
     entry.bank,
@@ -198,8 +208,9 @@ function updatePosicaoEntry(entry) {
     entry.maturity_date || "",
     invested,
     current,
-    entry.recurring === true || entry.recurring === "true" || entry.recurring === "on",
+    isRecurring,
     isNaN(recurringAmount) ? 0 : recurringAmount,
+    entry.recurring_start_date || "",
   ];
   sheet.getRange(Number(rowNumber), 1, 1, POSICOES_HEADERS.length).setValues([values]);
   return getDashboardData("12m");
@@ -382,15 +393,17 @@ function buildAlocacao(posicoes, positionDate) {
       current_value: Number(item.current_value),
       recurring: item.recurring === true || item.recurring === "true" || item.recurring === "on",
       recurring_amount: Number(item.recurring_amount || 0),
+      recurring_start_date: item.recurring_start_date ? new Date(item.recurring_start_date) : null,
     }))
     .filter((item) => !isNaN(item.date.getTime()) && !isNaN(item.invested_value) && !isNaN(item.current_value))
     .sort((a, b) => a.date - b.date);
 
   const datasDisponiveis = Array.from(new Set(parsed.map((p) => formatDateLabel(p.date)))).sort();
   const targetDate = resolvePositionDate(parsed, positionDate);
-  const filtered = parsed.filter((item) => formatDateLabel(item.date) === targetDate);
+  const filteredRaw = parsed.filter((item) => formatDateLabel(item.date) === targetDate);
+  const filtered = filteredRaw.map((item) => ({ ...item, effectiveInvested: computeEffectiveInvested(item) }));
   const totalCurrent = filtered.reduce((sum, item) => sum + item.current_value, 0);
-  const totalInvested = filtered.reduce((sum, item) => sum + item.invested_value, 0);
+  const totalInvested = filtered.reduce((sum, item) => sum + item.effectiveInvested, 0);
 
   const porBanco = aggregateByKey(filtered, "bank", totalCurrent);
   const porTipo = aggregateByKey(filtered, "investment_type", totalCurrent);
@@ -400,7 +413,10 @@ function buildAlocacao(posicoes, positionDate) {
     date: formatDateLabel(item.date),
     investment_date: item.investment_date ? formatDateLabel(item.investment_date) : "",
     maturity_date: item.maturity_date ? formatDateLabel(item.maturity_date) : "",
+    recurring_start_date: item.recurring_start_date ? formatDateLabel(item.recurring_start_date) : "",
     recurring_amount: Number(item.recurring_amount || 0),
+    invested_value_raw: item.invested_value,
+    invested_value: item.effectiveInvested,
   }));
 
   return {
@@ -419,9 +435,9 @@ function buildSyntheticPatrimonioFromAlocacao(alocacao) {
   if (!alocacao.posicoesList || !alocacao.posicoesList.length) return [];
   const valid = alocacao.posicoesList
     .map((item) => ({
-      investmentDate: item.investment_date ? new Date(item.investment_date) : null,
+      investmentDate: item.investment_date ? new Date(item.investment_date) : item.recurring_start_date ? new Date(item.recurring_start_date) : null,
       currentDate: item.date ? new Date(item.date) : null,
-      invested: Number(item.invested_value),
+      invested: computeEffectiveInvested(item),
       current: Number(item.current_value),
     }))
     .filter((item) => item.investmentDate && item.currentDate && !isNaN(item.investmentDate.getTime()) && !isNaN(item.currentDate.getTime()) && item.invested > 0 && item.current >= 0);
@@ -449,6 +465,25 @@ function buildSyntheticPatrimonioFromAlocacao(alocacao) {
   return series;
 }
 
+function computeEffectiveInvested(item) {
+  const invested = Number(item.invested_value_raw ?? item.invested_value);
+  const recurring = item.recurring === true || item.recurring === "true" || item.recurring === "on";
+  const recurringAmount = Number(item.recurring_amount || 0);
+  const recurringStart = item.recurring_start_date ? new Date(item.recurring_start_date) : null;
+  if (!recurring || !recurringStart || isNaN(recurringStart.getTime()) || recurringAmount <= 0) return invested;
+
+  const positionDate = item.date ? new Date(item.date) : null;
+  if (!positionDate || isNaN(positionDate.getTime())) return invested;
+
+  const yearDiff = positionDate.getFullYear() - recurringStart.getFullYear();
+  const monthDiff = positionDate.getMonth() - recurringStart.getMonth();
+  let months = yearDiff * 12 + monthDiff;
+  if (positionDate.getDate() < recurringStart.getDate()) months -= 1;
+  months = Math.max(0, months + 1); // include starting month
+
+  return invested + months * recurringAmount;
+}
+
 function resolvePositionDate(records, positionDate) {
   if (positionDate) return positionDate;
   const latest = records[records.length - 1];
@@ -459,7 +494,7 @@ function aggregateByKey(list, key, total) {
   const map = new Map();
   list.forEach((item) => {
     const current = map.get(item[key]) || { invested: 0, current: 0 };
-    current.invested += item.invested_value;
+    current.invested += item.effectiveInvested !== undefined ? item.effectiveInvested : item.invested_value;
     current.current += item.current_value;
     map.set(item[key], current);
   });
